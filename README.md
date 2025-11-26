@@ -1,25 +1,19 @@
 Configuración Inicial del Backend
 
-Comencé configurando el entorno del backend utilizando uv sync para instalar todas las dependencias especificadas en pyproject.toml. Decidí trabajar con SQLite en lugar de PostgreSQL por su simplicidad en desarrollo, por lo que modifiqué el archivo .env con la cadena de conexión sqlite:///./bd2_library.db y actualicé app/config.py para usar SQLite por defecto. Durante este proceso, tuve que corregir el nombre de la variable del secreto JWT que estaba como JWT_SECRET_KEY pero el código esperaba JWT_SECRET.
+Comencé configurando el entorno del backend utilizando uv sync para instalar todas las dependencias especificadas en pyproject.toml. Decidí trabajar con SQLite en lugar de PostgreSQL por su simplicidad en desarrollo, por lo que modifiqué el archivo .env con la cadena de conexión:
+
+sqlite:///./bd2_library.db
+
+También actualicé app/config.py para usar SQLite por defecto. En este proceso ajusté algunos detalles del código base entregado por el docente, como corregir el nombre de la variable del secreto JWT, que estaba definida como JWT_SECRET_KEY aunque el código esperaba JWT_SECRET. Para afinar estos detalles revisé referencias y soluciones que ayudaron a verificar que la configuración coincidiera con el comportamiento esperado.
 
 Implementación de Controladores y Seguridad
 
-Implementé todos los controladores necesarios para el proyecto. En app/controllers/user.py creé el UserController con operaciones CRUD completas, siendo crucial agregar exclude_from_auth=True al endpoint de creación de usuarios para permitir registro público sin autenticación previa. El controlador de autenticación en app/controllers/auth.py implementa el login verificando contraseñas hasheadas con Argon2 y retornando tokens JWT.
-Configuré diferentes DTOs en app/dtos/user.py para cada operación: UserReadDTO excluye la contraseña en las respuestas, UserCreateDTO excluye campos autogenerados, y UserUpdateDTO permite actualizaciones parciales. Los repositorios utilizan SQLAlchemySyncRepository con un método especial add_with_hashed_password que hashea automáticamente las contraseñas antes de guardarlas.
+Implementé todos los controladores necesarios para el proyecto. En app/controllers/user.py creé el UserController con operaciones CRUD completas, agregando exclude_from_auth=True al endpoint de creación de usuarios para permitir registros públicos sin autenticación previa. Este punto me llevó a revisar distintas formas de manejar la autorización, lo que ayudó a resolver el problema que impedía crear usuarios desde el frontend.
 
-Un desafío importante fue habilitar CORS en el backend. Las peticiones del frontend (corriendo en localhost:5173) eran bloqueadas por el navegador al intentar comunicarse con el backend (localhost:8000). Lo resolví agregando CORSConfig en app/__init__.py para permitir explícitamente peticiones desde el origen del frontend con todos los métodos y headers necesarios.
+El controlador de autenticación en app/controllers/auth.py implementa el login verificando contraseñas hasheadas con Argon2 y retornando tokens JWT. Adicionalmente configuré varios DTOs en app/dtos/user.py: UserReadDTO excluye la contraseña en las respuestas, UserCreateDTO excluye campos autogenerados y UserUpdateDTO permite actualizaciones parciales. Los repositorios utilizan SQLAlchemySyncRepository con un método especial add_with_hashed_password que hashea automáticamente las contraseñas antes de guardarlas.
+
+Otro desafío fue habilitar CORS en el backend, ya que las peticiones desde el frontend (localhost:5173) eran bloqueadas por el navegador. Para solucionarlo agregué CORSConfig en app/__init__.py, permitiendo explícitamente peticiones desde el origen del frontend con los métodos y headers necesarios.
 
 Base de Datos y Pruebas
 
-Ejecuté las migraciones con uv run alembic upgrade head, creando la base de datos SQLite con todas las tablas necesarias incluyendo campos de auditoría automáticos. Probé la funcionalidad creando usuarios de prueba usando curl: primero creé usuarios "test" y "test2", luego agregué usuarios con nombres completos como "Cristobal Vidal" y "Diego Herrera". Verifiqué que el endpoint de login devolviera tokens JWT correctos usando el formato application/x-www-form-urlencoded según el estándar OAuth2.
-
-Desarrollo del Frontend
-
-En el frontend actualicé src/interfaces.ts agregando la interface UserCreate que incluye el campo de contraseña. Implementé la función registerUser en src/api/index.ts que realiza peticiones POST al endpoint /users del backend.
-Creé el componente RegisterForm.vue con un formulario completo que incluye validaciones del lado del cliente: verifica que todos los campos estén completos, que las contraseñas coincidan y tengan al menos 6 caracteres. El componente incluye toggles para mostrar/ocultar contraseñas, manejo de estados de carga y mensajes de error. Tras un registro exitoso, redirige automáticamente al login.
-
-Creé la vista RegisterView.vue que renderiza el formulario y agregué la ruta /register en src/router/index.ts. Para mejorar la experiencia de usuario, modifiqué LoginForm.vue agregando un botón "¿No tienes cuenta? Regístrate aquí" que permite navegar fácilmente a la página de registro sin necesidad de escribir la URL manualmente.
-
-Flujo de Trabajo Completo
-
-Me registré desde el frontend con usuarios de prueba como "test" y "test2", además de crear usuarios con nombres completos como "Cristobal Vidal" y "Diego Herrera". El sistema redirigía automáticamente al login después del registro, donde ingresaba las credenciales, recibía el token JWT, y podía acceder a la lista de usuarios autenticados donde aparecían todos los usuarios creados correctamente.
+Ejecuté las migraciones con uv run alembic upgrade head, creando la base de datos SQLite con todas las tablas necesarias, incluyendo los campos de auditoría automática. Probé la funcionalidad creando usuarios de prueba usando curl: primero los usuarios “test” y “test2”, y luego usuarios con nombres
